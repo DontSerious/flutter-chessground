@@ -1,3 +1,4 @@
+import 'package:chessground/chessground.dart';
 import 'package:flutter/widgets.dart';
 import '../models.dart';
 
@@ -7,7 +8,7 @@ import '../models.dart';
 /// Since it's a wrapper over a [Positioned] widget it must be a descendant of a
 /// [Stack].
 class PositionedSquare extends StatelessWidget {
-  const PositionedSquare({
+  PositionedSquare({
     super.key,
     required this.child,
     required this.size,
@@ -23,11 +24,16 @@ class PositionedSquare extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final offset = Coord.fromSquareId(squareId).offset(orientation, size);
+
+    final isExtend = BS.extended;
+    final offsetExtend = isExtend ? const Offset(128, 128) : Offset.zero;
+    final newSize = isExtend ? size * 1280 / 1024 : size;
+    
     return Positioned(
-      width: size,
-      height: size,
-      left: offset.dx,
-      top: offset.dy,
+      width: newSize,
+      height: newSize,
+      left: offset.dx + offsetExtend.dx,
+      top: offset.dy + offsetExtend.dy,
       child: child,
     );
   }
