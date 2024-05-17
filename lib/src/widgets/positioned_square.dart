@@ -14,24 +14,25 @@ class PositionedSquare extends StatelessWidget {
     required this.size,
     required this.orientation,
     required this.squareId,
+    this.isExtend = false,
   });
 
   final Widget child;
   final double size;
   final Side orientation;
   final SquareId squareId;
+  final bool isExtend;
 
   @override
   Widget build(BuildContext context) {
     final offset = Coord.fromSquareId(squareId).offset(orientation, size);
 
-    final isExtend = BS.extended;
-    final offsetExtend = isExtend ? const Offset(128, 128) : Offset.zero;
-    final newSize = isExtend ? size * 1280 / 1024 : size;
+    final offsetExtend = isExtend ? const Offset(63, 63) : Offset.zero;
+    // final newSize = isExtend ? size * 1280 / 1024 : size;
     
     return Positioned(
-      width: newSize,
-      height: newSize,
+      width: size,
+      height: size,
       left: offset.dx + offsetExtend.dx,
       top: offset.dy + offsetExtend.dy,
       child: child,

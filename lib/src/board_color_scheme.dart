@@ -292,12 +292,14 @@ class BoardColorScheme {
       lightSquare: Color(0xffb8b8b8),
       darkSquare: Color(0xff7d7d7d),
       image: AssetImage('$_boardsPath/grey10x10-1280.jpg', package: 'chessground'),
+      isExtend: true,
     ),
     whiteCoordBackground: ImageBackground(
       lightSquare: Color(0xffb8b8b8),
       darkSquare: Color(0xff7d7d7d),
       image: AssetImage('$_boardsPath/grey10x10-1280.jpg', package: 'chessground'),
       coordinates: true,
+      isExtend: true,
     ),
     blackCoordBackground: ImageBackground(
       lightSquare: Color(0xffb8b8b8),
@@ -305,6 +307,7 @@ class BoardColorScheme {
       image: AssetImage('$_boardsPath/grey10x10-1280.jpg', package: 'chessground'),
       coordinates: true,
       orientation: Side.black,
+      isExtend: true,
     ),
     selected: HighlightDetails(solidColor: Color(0x6014551e)),
     validMoves: Color(0x4014551e),

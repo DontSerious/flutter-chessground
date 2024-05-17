@@ -16,6 +16,8 @@ import '../premove.dart';
 import '../board_settings.dart';
 import '../board_data.dart';
 
+import 'package:chessground/chessground.dart';
+
 /// A chessboard widget.
 ///
 /// This widget can be used to display a static board, a dynamic board that
@@ -47,11 +49,12 @@ class Board extends StatefulWidget {
   /// If the callback is null, the board will not allow premoves.
   final void Function(Move?)? onPremove;
 
-  double get squareSize => size / 8;
+  double get squareSize => settings.extended ? size / 10 : size / 8;
 
   Coord? localOffset2Coord(Offset offset) {
-    final x = (offset.dx / squareSize).floor();
-    final y = (offset.dy / squareSize).floor();
+    final localOffset = settings.extended ? offset.translate(-64, -64) : offset;
+    final x = (localOffset.dx / squareSize).floor();
+    final y = (localOffset.dy / squareSize).floor();
     final orientX = data.orientation == Side.black ? 7 - x : x;
     final orientY = data.orientation == Side.black ? y : 7 - y;
     if (orientX >= 0 && orientX <= 7 && orientY >= 0 && orientY <= 7) {
@@ -115,6 +118,7 @@ class _BoardState extends State<Board> {
               size: widget.squareSize,
               orientation: widget.data.orientation,
               squareId: squareId,
+              isExtend: widget.settings.extended,
               child: Highlight(
                 size: widget.squareSize,
                 details: colorScheme.lastMove,
@@ -128,6 +132,7 @@ class _BoardState extends State<Board> {
             size: widget.squareSize,
             orientation: widget.data.orientation,
             squareId: squareId,
+            isExtend: widget.settings.extended,
             child: Highlight(
               size: widget.squareSize,
               details: HighlightDetails(solidColor: colorScheme.validPremoves),
@@ -139,6 +144,7 @@ class _BoardState extends State<Board> {
           size: widget.squareSize,
           orientation: widget.data.orientation,
           squareId: selected!,
+          isExtend: widget.settings.extended,
           child: Highlight(
             size: widget.squareSize,
             details: colorScheme.selected,
@@ -150,6 +156,7 @@ class _BoardState extends State<Board> {
           size: widget.squareSize,
           orientation: widget.data.orientation,
           squareId: dest,
+          isExtend: widget.settings.extended,
           child: MoveDest(
             size: widget.squareSize,
             color: colorScheme.validMoves,
@@ -162,6 +169,7 @@ class _BoardState extends State<Board> {
           size: widget.squareSize,
           orientation: widget.data.orientation,
           squareId: dest,
+          isExtend: widget.settings.extended,
           child: MoveDest(
             size: widget.squareSize,
             color: colorScheme.validPremoves,
@@ -174,6 +182,7 @@ class _BoardState extends State<Board> {
           size: widget.squareSize,
           orientation: widget.data.orientation,
           squareId: checkSquare,
+          isExtend: widget.settings.extended,
           child: CheckHighlight(size: widget.squareSize),
         ),
     ];
@@ -277,7 +286,12 @@ class _BoardState extends State<Board> {
             )
           else
             ...highlightedBackground,
-          ...objects,
+          Padding(
+            padding: const EdgeInsets.only(left: 64, top: 64),
+            child: Stack(
+              children: objects,
+            ),
+          ),
           if (_promotionMove != null && widget.data.sideToMove != null)
             PromotionSelector(
               pieceAssets: widget.settings.pieceAssets,
@@ -817,8 +831,8 @@ class _DragAvatar {
 
   Widget _buildPieceFeedback(BuildContext context) {
     return Positioned(
-      left: _position.dx,
-      top: _position.dy,
+      left: _position.dx + 64,
+      top: _position.dy + 64,
       child: IgnorePointer(
         child: pieceFeedback,
       ),
@@ -828,8 +842,8 @@ class _DragAvatar {
   Widget _buildSquareTargetFeedback(BuildContext context) {
     if (_squareTargetPosition != null) {
       return Positioned(
-        left: _squareTargetPosition!.dx,
-        top: _squareTargetPosition!.dy,
+        left: _squareTargetPosition!.dx + 64,
+        top: _squareTargetPosition!.dy + 64,
         child: IgnorePointer(
           child: squareTargetFeedback,
         ),
