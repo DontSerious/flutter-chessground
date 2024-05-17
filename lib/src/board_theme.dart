@@ -20,6 +20,7 @@ enum BoardTheme {
   marble('Marble', BoardColorScheme.marble),
   greenPlastic('Green Plastic', BoardColorScheme.greenPlastic),
   grey('Grey', BoardColorScheme.grey),
+  greyExtend('GreyExtend', BoardColorScheme.greyExtend),
   metal('Metal', BoardColorScheme.metal),
   olive('Olive', BoardColorScheme.olive),
   newspaper('Newspaper', BoardColorScheme.newspaper),

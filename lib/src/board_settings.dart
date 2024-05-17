@@ -33,6 +33,8 @@ class BoardSettings {
     this.enablePremoveCastling = true,
     this.autoQueenPromotion = false,
     this.autoQueenPromotionOnPremove = true,
+
+    this.extended = false,
   });
 
   /// Theme of the board
@@ -82,6 +84,9 @@ class BoardSettings {
   /// Shape drawing options object containing data about how new shapes can be drawn.
   final DrawShapeOptions drawShape;
 
+  /// Whether to show extended board
+  final bool extended;
+
   BoardSettings copyWith({
     BoardColorScheme? colorScheme,
     PieceAssets? pieceAssets,
@@ -98,6 +103,7 @@ class BoardSettings {
     bool? autoQueenPromotion,
     bool? autoQueenPromotionOnPremove,
     DrawShapeOptions? drawShape,
+    bool? extended,
   }) {
     return BoardSettings(
       colorScheme: colorScheme ?? this.colorScheme,
@@ -117,6 +123,7 @@ class BoardSettings {
           autoQueenPromotionOnPremove ?? this.autoQueenPromotionOnPremove,
       autoQueenPromotion: autoQueenPromotion ?? this.autoQueenPromotion,
       drawShape: drawShape ?? this.drawShape,
+      extended: extended ?? this.extended,
     );
   }
 }

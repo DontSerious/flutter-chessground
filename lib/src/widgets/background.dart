@@ -1,5 +1,13 @@
+import 'package:chessground/chessground.dart';
 import 'package:flutter/widgets.dart';
 import '../models.dart';
+
+const BS = BoardSettings();
+final COLUMN_SIZE = BS.extended ? 10 : 8;
+final ROW_SIZE = BS.extended ? 10 : 8;
+final double PHOTO_WIDTH = BS.extended ? 1280 : 1024;
+final double PHOTO_HEIGHT = BS.extended ? 1280 : 1024;
+final double PHOTO_OFFSET = BS.extended ? 128 : 0;
 
 /// Base widget for the background of the chessboard.
 ///
@@ -34,11 +42,11 @@ class SolidColorBackground extends Background {
     return SizedBox.expand(
       child: Column(
         children: List.generate(
-          8,
+          COLUMN_SIZE,
           (rank) => Expanded(
             child: Row(
               children: List.generate(
-                8,
+                ROW_SIZE,
                 (file) => Expanded(
                   child: Container(
                     width: double.infinity,
@@ -79,26 +87,31 @@ class ImageBackground extends Background {
 
   @override
   Widget build(BuildContext context) {
-    return SizedBox.expand(
-      child: Stack(
-        children: [
-          Image(image: image),
-          if (coordinates)
-            Column(
-              children: List.generate(
-                8,
-                (rank) => Expanded(
-                  child: Row(
-                    children: List.generate(
-                      8,
-                      (file) => Expanded(
-                        child: SizedBox.expand(
-                          child: _Coordinate(
-                            rank: rank,
-                            file: file,
-                            orientation: orientation,
-                            color:
-                                (rank + file).isEven ? darkSquare : lightSquare,
+    return Padding(
+      padding: EdgeInsets.all(PHOTO_OFFSET),
+      child: SizedBox(
+        width: PHOTO_WIDTH,
+        height: PHOTO_HEIGHT,
+        child: Stack(
+          children: [
+            Image(image: image),
+            if (coordinates)
+              Column(
+                children: List.generate(
+                  COLUMN_SIZE,
+                  (rank) => Expanded(
+                    child: Row(
+                      children: List.generate(
+                        ROW_SIZE,
+                        (file) => Expanded(
+                          child: SizedBox.expand(
+                            child: _Coordinate(
+                              rank: rank,
+                              file: file,
+                              orientation: orientation,
+                              color:
+                                  (rank + file).isEven ? darkSquare : lightSquare,
+                            ),
                           ),
                         ),
                       ),
@@ -106,8 +119,8 @@ class ImageBackground extends Background {
                   ),
                 ),
               ),
-            ),
-        ],
+          ],
+        ),
       ),
     );
   }

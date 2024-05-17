@@ -284,6 +284,33 @@ class BoardColorScheme {
     validPremoves: Color(0x40203085),
   );
 
+  static const greyExtend = BoardColorScheme(
+    lightSquare: Color(0xffb8b8b8),
+    darkSquare: Color(0xff7d7d7d),
+    lastMove: HighlightDetails(solidColor: Color(0x809cc700)),
+    background: ImageBackground(
+      lightSquare: Color(0xffb8b8b8),
+      darkSquare: Color(0xff7d7d7d),
+      image: AssetImage('$_boardsPath/grey10x10-1280.jpg', package: 'chessground'),
+    ),
+    whiteCoordBackground: ImageBackground(
+      lightSquare: Color(0xffb8b8b8),
+      darkSquare: Color(0xff7d7d7d),
+      image: AssetImage('$_boardsPath/grey10x10-1280.jpg', package: 'chessground'),
+      coordinates: true,
+    ),
+    blackCoordBackground: ImageBackground(
+      lightSquare: Color(0xffb8b8b8),
+      darkSquare: Color(0xff7d7d7d),
+      image: AssetImage('$_boardsPath/grey10x10-1280.jpg', package: 'chessground'),
+      coordinates: true,
+      orientation: Side.black,
+    ),
+    selected: HighlightDetails(solidColor: Color(0x6014551e)),
+    validMoves: Color(0x4014551e),
+    validPremoves: Color(0x40203085),
+  );
+
   static const horsey = BoardColorScheme(
     lightSquare: Color(0xfff0d9b5),
     darkSquare: Color(0xff946f51),
