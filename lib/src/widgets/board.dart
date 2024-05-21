@@ -50,7 +50,10 @@ class Board extends StatefulWidget {
   double get squareSize => settings.extended ? size / 10 : size / 8;
 
   Coord? localOffset2Coord(Offset offset) {
-    final localOffset = settings.extended ? offset.translate(-64, -64) : offset;
+    var localOffset = offset;
+    if (settings.extended) {
+      localOffset = offset.translate(-squareSize, -squareSize);
+    }
     final x = (localOffset.dx / squareSize).floor();
     final y = (localOffset.dy / squareSize).floor();
     final orientX = data.orientation == Side.black ? 7 - x : x;
@@ -192,6 +195,7 @@ class _BoardState extends State<Board> {
           size: widget.squareSize,
           orientation: widget.data.orientation,
           squareId: entry.key,
+          isExtend: widget.settings.extended,
           child: PieceFadeOut(
             duration: widget.settings.animationDuration,
             piece: entry.value,
@@ -212,6 +216,7 @@ class _BoardState extends State<Board> {
             size: widget.squareSize,
             orientation: widget.data.orientation,
             squareId: entry.key,
+            isExtend: widget.settings.extended,
             child: PieceWidget(
               piece: entry.value,
               size: widget.squareSize,
@@ -226,6 +231,7 @@ class _BoardState extends State<Board> {
           size: widget.squareSize,
           orientation: widget.data.orientation,
           squareId: entry.key,
+          isExtend: widget.settings.extended,
           child: PieceTranslation(
             fromCoord: entry.value.$1.coord,
             toCoord: entry.value.$2.coord,
@@ -284,20 +290,7 @@ class _BoardState extends State<Board> {
             )
           else
             ...highlightedBackground,
-          SizedBox.expand(
-            child: Padding(
-              padding: () {
-                if (widget.settings.extended) {
-                  return EdgeInsets.all(widget.squareSize);
-                } else {
-                  return EdgeInsets.zero;
-                }
-              }(),
-              child: Stack(
-                children: objects,
-              ),
-            ),
-          ),
+          ...objects,
           if (_promotionMove != null && widget.data.sideToMove != null)
             PromotionSelector(
               pieceAssets: widget.settings.pieceAssets,
@@ -451,9 +444,12 @@ class _BoardState extends State<Board> {
   Offset? _squareTargetGlobalOffset(Offset localPosition) {
     final coord = widget.localOffset2Coord(localPosition);
     if (coord == null) return null;
-    final localOffset =
+    var localOffset =
         coord.offset(widget.data.orientation, widget.squareSize);
     final RenderBox box = context.findRenderObject()! as RenderBox;
+    if (widget.settings.extended) {
+      localOffset = localOffset.translate(widget.squareSize, widget.squareSize);
+    }
     final tmpOffset = box.localToGlobal(localOffset);
     return Offset(
       tmpOffset.dx - widget.squareSize / 2,
@@ -575,6 +571,7 @@ class _BoardState extends State<Board> {
   void _onTapUpPiece(TapUpDetails? details) {
     if (details == null) return;
     final squareId = widget.localOffset2SquareId(details.localPosition);
+    print(squareId);
     if (squareId != null && squareId != selected) {
       _tryMoveTo(squareId);
     } else if (squareId != null &&
