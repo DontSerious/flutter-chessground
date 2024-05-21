@@ -16,8 +16,6 @@ import '../premove.dart';
 import '../board_settings.dart';
 import '../board_data.dart';
 
-import 'package:chessground/chessground.dart';
-
 /// A chessboard widget.
 ///
 /// This widget can be used to display a static board, a dynamic board that
@@ -286,10 +284,18 @@ class _BoardState extends State<Board> {
             )
           else
             ...highlightedBackground,
-          Padding(
-            padding: const EdgeInsets.only(left: 64, top: 64),
-            child: Stack(
-              children: objects,
+          SizedBox.expand(
+            child: Padding(
+              padding: () {
+                if (widget.settings.extended) {
+                  return EdgeInsets.all(widget.squareSize);
+                } else {
+                  return EdgeInsets.zero;
+                }
+              }(),
+              child: Stack(
+                children: objects,
+              ),
             ),
           ),
           if (_promotionMove != null && widget.data.sideToMove != null)
@@ -831,8 +837,8 @@ class _DragAvatar {
 
   Widget _buildPieceFeedback(BuildContext context) {
     return Positioned(
-      left: _position.dx + 64,
-      top: _position.dy + 64,
+      left: _position.dx,
+      top: _position.dy,
       child: IgnorePointer(
         child: pieceFeedback,
       ),
@@ -842,8 +848,8 @@ class _DragAvatar {
   Widget _buildSquareTargetFeedback(BuildContext context) {
     if (_squareTargetPosition != null) {
       return Positioned(
-        left: _squareTargetPosition!.dx + 64,
-        top: _squareTargetPosition!.dy + 64,
+        left: _squareTargetPosition!.dx,
+        top: _squareTargetPosition!.dy,
         child: IgnorePointer(
           child: squareTargetFeedback,
         ),
