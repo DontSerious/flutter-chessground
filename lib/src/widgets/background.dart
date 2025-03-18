@@ -31,40 +31,97 @@ class SolidColorChessboardBackground extends ChessboardBackground {
 
   @override
   Widget build(BuildContext context) {
-    return Directionality(
-      textDirection: TextDirection.ltr,
-      child: SizedBox.expand(
-        child: Column(
-          children: List.generate(
-            8,
-            (rank) => Expanded(
-              child: Row(
-                children: List.generate(
-                  8,
-                  (file) => Expanded(
-                    child: Container(
-                      width: double.infinity,
-                      height: double.infinity,
-                      color: (rank + file).isEven ? lightSquare : darkSquare,
-                      child: coordinates && (file == 7 || rank == 7)
-                          ? _Coordinate(
-                              rank: rank,
-                              file: file,
-                              orientation: orientation,
-                              color: (rank + file).isEven
-                                  ? darkSquare
-                                  : lightSquare,
-                            )
-                          : null,
-                    ),
-                  ),
-                ),
-              ),
-            ),
-          ),
-        ),
+    return CustomPaint(
+      size: Size.infinite,
+      painter: _SolidColorChessboardPainter(
+        lightSquare: lightSquare,
+        darkSquare: darkSquare,
+        coordinates: coordinates,
+        orientation: orientation,
       ),
     );
+  }
+}
+
+class _SolidColorChessboardPainter extends CustomPainter {
+  _SolidColorChessboardPainter({
+    required this.lightSquare,
+    required this.darkSquare,
+    required this.coordinates,
+    required this.orientation,
+  });
+
+  final Color lightSquare;
+  final Color darkSquare;
+  final bool coordinates;
+  final Side orientation;
+
+  @override
+  void paint(Canvas canvas, Size size) {
+    final squareSize = size.shortestSide / 8;
+    for (var rank = 0; rank < 8; rank++) {
+      for (var file = 0; file < 8; file++) {
+        final square = Rect.fromLTWH(
+          file * squareSize,
+          rank * squareSize,
+          squareSize,
+          squareSize,
+        );
+        final paint =
+            Paint()..color = (rank + file).isEven ? lightSquare : darkSquare;
+        canvas.drawRect(square, paint);
+        if (coordinates && (file == 7 || rank == 7)) {
+          final coordStyle = TextStyle(
+            inherit: false,
+            fontWeight: FontWeight.bold,
+            fontSize: 10.0,
+            color: (rank + file).isEven ? darkSquare : lightSquare,
+            fontFamily: 'Roboto',
+            height: 1.0,
+          );
+          if (file == 7) {
+            final coord = TextPainter(
+              text: TextSpan(
+                text: orientation == Side.white ? '${8 - rank}' : '${rank + 1}',
+                style: coordStyle,
+              ),
+              textDirection: TextDirection.ltr,
+            );
+            coord.layout();
+            const edgeOffset = 2.0;
+            final offset = Offset(
+              file * squareSize + (squareSize - coord.width) - edgeOffset,
+              rank * squareSize + edgeOffset,
+            );
+            coord.paint(canvas, offset);
+          }
+          if (rank == 7) {
+            final coord = TextPainter(
+              text: TextSpan(
+                text:
+                    orientation == Side.white
+                        ? String.fromCharCode(97 + file)
+                        : String.fromCharCode(97 + 7 - file),
+                style: coordStyle,
+              ),
+              textDirection: TextDirection.ltr,
+            );
+            coord.layout();
+            const edgeOffset = 2.0;
+            final offset = Offset(
+              file * squareSize + edgeOffset,
+              rank * squareSize + (squareSize - coord.height) - edgeOffset,
+            );
+            coord.paint(canvas, offset);
+          }
+        }
+      }
+    }
+  }
+
+  @override
+  bool shouldRepaint(covariant CustomPainter oldDelegate) {
+    return false;
   }
 }
 
@@ -83,102 +140,103 @@ class ImageChessboardBackground extends ChessboardBackground {
 
   @override
   Widget build(BuildContext context) {
-    return Directionality(
-      textDirection: TextDirection.ltr,
-      child: SizedBox.expand(
-        child: Stack(
-          children: [
-            Image(image: image),
-            if (coordinates)
-              Column(
-                children: List.generate(
-                  8,
-                  (rank) => Expanded(
-                    child: Row(
-                      children: List.generate(
-                        8,
-                        (file) => Expanded(
-                          child: SizedBox.expand(
-                            child: rank == 7 || file == 7
-                                ? _Coordinate(
-                                    rank: rank,
-                                    file: file,
-                                    orientation: orientation,
-                                    color: (rank + file).isEven
-                                        ? darkSquare
-                                        : lightSquare,
-                                  )
-                                : null,
-                          ),
-                        ),
-                      ),
-                    ),
-                  ),
-                ),
-              ),
-          ],
-        ),
-      ),
-    );
+    if (coordinates) {
+      return Stack(
+        alignment: Alignment.topLeft,
+        clipBehavior: Clip.none,
+        children: [
+          Image(image: image),
+          CustomPaint(
+            size: Size.infinite,
+            painter: _ImageBackgroundCoordinatePainter(
+              lightSquare: lightSquare,
+              darkSquare: darkSquare,
+              orientation: orientation,
+            ),
+          ),
+        ],
+      );
+    } else {
+      return Image(image: image);
+    }
   }
 }
 
-class _Coordinate extends StatelessWidget {
-  const _Coordinate({
-    required this.rank,
-    required this.file,
-    required this.color,
+class _ImageBackgroundCoordinatePainter extends CustomPainter {
+  _ImageBackgroundCoordinatePainter({
+    required this.lightSquare,
+    required this.darkSquare,
     required this.orientation,
   });
 
-  final int rank;
-  final int file;
-  final Color color;
   final Side orientation;
+  final Color lightSquare;
+  final Color darkSquare;
 
   @override
-  Widget build(BuildContext context) {
-    final coordStyle = TextStyle(
-      inherit: false,
-      fontWeight: FontWeight.bold,
-      fontSize: 10.0,
-      color: color,
-      fontFamily: 'Roboto',
-      height: 1.0,
-    );
-    return Stack(
-      children: [
-        if (file == 7)
-          Positioned(
-            top: 2.0,
-            right: 2.0,
-            child: Align(
-              alignment: Alignment.topRight,
-              child: Text(
-                orientation == Side.white ? '${8 - rank}' : '${rank + 1}',
+  void paint(Canvas canvas, Size size) {
+    final squareSize = size.shortestSide / 8;
+    for (var rank = 0; rank < 8; rank++) {
+      for (var file = 0; file < 8; file++) {
+        if (file == 7 || rank == 7) {
+          final coordStyle = TextStyle(
+            inherit: false,
+            fontWeight: FontWeight.bold,
+            fontSize: 10.0,
+            color: (rank + file).isEven ? darkSquare : lightSquare,
+            fontFamily: 'Roboto',
+            height: 1.0,
+          );
+          final square = Rect.fromLTWH(
+            file * squareSize,
+            rank * squareSize,
+            squareSize,
+            squareSize,
+          );
+          final paint = Paint()..color = const Color(0x00000000);
+          canvas.drawRect(square, paint);
+          if (file == 7) {
+            final coord = TextPainter(
+              text: TextSpan(
+                text: orientation == Side.white ? '${8 - rank}' : '${rank + 1}',
                 style: coordStyle,
-                textScaler: TextScaler.noScaling,
-                textAlign: TextAlign.center,
               ),
-            ),
-          ),
-        if (rank == 7)
-          Positioned(
-            bottom: 2.0,
-            left: 2.0,
-            child: Align(
-              alignment: Alignment.bottomLeft,
-              child: Text(
-                orientation == Side.white
-                    ? String.fromCharCode(97 + file)
-                    : String.fromCharCode(97 + 7 - file),
+              textDirection: TextDirection.ltr,
+            );
+            coord.layout();
+            const edgeOffset = 2.0;
+            final offset = Offset(
+              file * squareSize + (squareSize - coord.width) - edgeOffset,
+              rank * squareSize + edgeOffset,
+            );
+            coord.paint(canvas, offset);
+          }
+          if (rank == 7) {
+            final coord = TextPainter(
+              text: TextSpan(
+                text:
+                    orientation == Side.white
+                        ? String.fromCharCode(97 + file)
+                        : String.fromCharCode(97 + 7 - file),
                 style: coordStyle,
-                textScaler: TextScaler.noScaling,
-                textAlign: TextAlign.center,
               ),
-            ),
-          ),
-      ],
-    );
+              textDirection: TextDirection.ltr,
+            );
+            coord.layout();
+            const edgeOffset = 2.0;
+            final offset = Offset(
+              file * squareSize + edgeOffset,
+              rank * squareSize + (squareSize - coord.height) - edgeOffset,
+            );
+            coord.paint(canvas, offset);
+          }
+        }
+      }
+    }
+  }
+
+  @override
+  bool shouldRepaint(covariant CustomPainter oldDelegate) {
+    return false;
   }
 }

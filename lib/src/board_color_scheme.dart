@@ -71,16 +71,16 @@ class ChessboardColorScheme {
 
   @override
   int get hashCode => Object.hash(
-        lightSquare,
-        darkSquare,
-        background,
-        whiteCoordBackground,
-        blackCoordBackground,
-        lastMove,
-        selected,
-        validMoves,
-        validPremoves,
-      );
+    lightSquare,
+    darkSquare,
+    background,
+    whiteCoordBackground,
+    blackCoordBackground,
+    lastMove,
+    selected,
+    validMoves,
+    validPremoves,
+  );
 
   static const brown = ChessboardColorScheme(
     lightSquare: Color(0xfff0d9b6),
@@ -151,6 +151,30 @@ class ChessboardColorScheme {
     lastMove: HighlightDetails(solidColor: Color.fromRGBO(0, 155, 199, 0.41)),
     selected: HighlightDetails(solidColor: Color.fromRGBO(216, 85, 0, 0.3)),
     validMoves: Color.fromRGBO(0, 0, 0, 0.20),
+    validPremoves: Color(0x40203085),
+  );
+
+  static const ic = ChessboardColorScheme(
+    lightSquare: Color(0xffececec),
+    darkSquare: Color(0xffc1c18e),
+    background: SolidColorChessboardBackground(
+      lightSquare: Color(0xffececec),
+      darkSquare: Color(0xffc1c18e),
+    ),
+    whiteCoordBackground: SolidColorChessboardBackground(
+      lightSquare: Color(0xffececec),
+      darkSquare: Color(0xffc1c18e),
+      coordinates: true,
+    ),
+    blackCoordBackground: SolidColorChessboardBackground(
+      lightSquare: Color(0xffececec),
+      darkSquare: Color(0xffc1c18e),
+      coordinates: true,
+      orientation: Side.black,
+    ),
+    lastMove: HighlightDetails(solidColor: Color(0x809cc700)),
+    selected: HighlightDetails(solidColor: Color(0x6014551e)),
+    validMoves: Color(0x4014551e),
     validPremoves: Color(0x40203085),
   );
 
@@ -268,21 +292,27 @@ class ChessboardColorScheme {
     background: ImageChessboardBackground(
       lightSquare: Color(0xfff2f9bb),
       darkSquare: Color(0xff59935d),
-      image:
-          AssetImage('$_boardsPath/green-plastic.png', package: 'chessground'),
+      image: AssetImage(
+        '$_boardsPath/green-plastic.png',
+        package: 'chessground',
+      ),
     ),
     whiteCoordBackground: ImageChessboardBackground(
       lightSquare: Color(0xfff2f9bb),
       darkSquare: Color(0xff59935d),
-      image:
-          AssetImage('$_boardsPath/green-plastic.png', package: 'chessground'),
+      image: AssetImage(
+        '$_boardsPath/green-plastic.png',
+        package: 'chessground',
+      ),
       coordinates: true,
     ),
     blackCoordBackground: ImageChessboardBackground(
       lightSquare: Color(0xfff2f9bb),
       darkSquare: Color(0xff59935d),
-      image:
-          AssetImage('$_boardsPath/green-plastic.png', package: 'chessground'),
+      image: AssetImage(
+        '$_boardsPath/green-plastic.png',
+        package: 'chessground',
+      ),
       coordinates: true,
       orientation: Side.black,
     ),
@@ -551,21 +581,27 @@ class ChessboardColorScheme {
     background: ImageChessboardBackground(
       lightSquare: Color(0xffe8e9b7),
       darkSquare: Color(0xffed7272),
-      image:
-          AssetImage('$_boardsPath/pink-pyramid.png', package: 'chessground'),
+      image: AssetImage(
+        '$_boardsPath/pink-pyramid.png',
+        package: 'chessground',
+      ),
     ),
     whiteCoordBackground: ImageChessboardBackground(
       lightSquare: Color(0xffe8e9b7),
       darkSquare: Color(0xffed7272),
-      image:
-          AssetImage('$_boardsPath/pink-pyramid.png', package: 'chessground'),
+      image: AssetImage(
+        '$_boardsPath/pink-pyramid.png',
+        package: 'chessground',
+      ),
       coordinates: true,
     ),
     blackCoordBackground: ImageChessboardBackground(
       lightSquare: Color(0xffe8e9b7),
       darkSquare: Color(0xffed7272),
-      image:
-          AssetImage('$_boardsPath/pink-pyramid.png', package: 'chessground'),
+      image: AssetImage(
+        '$_boardsPath/pink-pyramid.png',
+        package: 'chessground',
+      ),
       coordinates: true,
       orientation: Side.black,
     ),

@@ -1,289 +1,118 @@
-import 'package:dartchess/dartchess.dart' show Piece, PieceKind, Role, Side;
+import 'package:dartchess/dartchess.dart';
 import 'package:flutter/widgets.dart';
 import 'package:fast_immutable_collections/fast_immutable_collections.dart';
 
 /// The side that can interact with the board.
-enum InteractableSide { both, none, white, black }
+enum PlayerSide {
+  /// No side can interact with the board.
+  none,
+
+  /// Both sides can interact with the board.
+  ///
+  /// This is used for games where both players can move the pieces as in over-the-board games.
+  both,
+
+  /// Only white side can interact with the board.
+  white,
+
+  /// Only black side can interact with the board.
+  black,
+}
+
+/// Game data for an interactive chessboard.
+///
+/// This is used to control the state of the chessboard and to provide callbacks for user interactions.
+@immutable
+class GameData {
+  /// Creates a new [GameData] with the provided values.
+  const GameData({
+    required this.playerSide,
+    required this.sideToMove,
+    required this.validMoves,
+    required this.promotionMove,
+    required this.onMove,
+    required this.onPromotionSelection,
+    this.isCheck,
+    this.premovable,
+  });
+
+  /// Side that is allowed to move.
+  final PlayerSide playerSide;
+
+  /// Side which is to move.
+  final Side sideToMove;
+
+  /// A pawn move that should be promoted.
+  ///
+  /// Will show a promotion dialog if not null.
+  final NormalMove? promotionMove;
+
+  /// Highlight the king of current side to move
+  final bool? isCheck;
+
+  /// Set of moves allowed to be played by current side to move.
+  final ValidMoves validMoves;
+
+  /// Callback called after a move has been made.
+  ///
+  /// If the move has been made with drag and drop, `isDrop` will be true.
+  final void Function(NormalMove, {bool? isDrop}) onMove;
+
+  /// Callback called after a piece has been selected for promotion.
+  ///
+  /// If the argument is `null`, the promotion should be canceled.
+  final void Function(Role? role) onPromotionSelection;
+
+  /// Optional premovable state of the board.
+  ///
+  /// If `null`, the board will not allow premoves.
+  final Premovable? premovable;
+}
+
+/// State of a premovable chessboard.
+typedef Premovable =
+    ({
+      /// Registered premove.
+      ///
+      /// Will be shown on the board as a preview move.
+      ///
+      /// Chessground will not play the premove automatically, it is up to the library user to play it.
+      NormalMove? premove,
+
+      /// Callback called after a premove has been set/unset.
+      ///
+      /// If `null`, the premove will be unset.
+      void Function(NormalMove?) onSetPremove,
+    });
 
 /// Describes a set of piece assets.
 ///
 /// The [PieceAssets] must be complete with all the pieces for both sides.
 typedef PieceAssets = IMap<PieceKind, AssetImage>;
 
-/// Square identifier using the algebraic coordinate notation, such as e2, c3, etc.
-extension type const SquareId._(String value) {
-  const SquareId(this.value)
-      : assert(
-          value == 'a1' ||
-              value == 'a2' ||
-              value == 'a3' ||
-              value == 'a4' ||
-              value == 'a5' ||
-              value == 'a6' ||
-              value == 'a7' ||
-              value == 'a8' ||
-              value == 'b1' ||
-              value == 'b2' ||
-              value == 'b3' ||
-              value == 'b4' ||
-              value == 'b5' ||
-              value == 'b6' ||
-              value == 'b7' ||
-              value == 'b8' ||
-              value == 'c1' ||
-              value == 'c2' ||
-              value == 'c3' ||
-              value == 'c4' ||
-              value == 'c5' ||
-              value == 'c6' ||
-              value == 'c7' ||
-              value == 'c8' ||
-              value == 'd1' ||
-              value == 'd2' ||
-              value == 'd3' ||
-              value == 'd4' ||
-              value == 'd5' ||
-              value == 'd6' ||
-              value == 'd7' ||
-              value == 'd8' ||
-              value == 'e1' ||
-              value == 'e2' ||
-              value == 'e3' ||
-              value == 'e4' ||
-              value == 'e5' ||
-              value == 'e6' ||
-              value == 'e7' ||
-              value == 'e8' ||
-              value == 'f1' ||
-              value == 'f2' ||
-              value == 'f3' ||
-              value == 'f4' ||
-              value == 'f5' ||
-              value == 'f6' ||
-              value == 'f7' ||
-              value == 'f8' ||
-              value == 'g1' ||
-              value == 'g2' ||
-              value == 'g3' ||
-              value == 'g4' ||
-              value == 'g5' ||
-              value == 'g6' ||
-              value == 'g7' ||
-              value == 'g8' ||
-              value == 'h1' ||
-              value == 'h2' ||
-              value == 'h3' ||
-              value == 'h4' ||
-              value == 'h5' ||
-              value == 'h6' ||
-              value == 'h7' ||
-              value == 'h8',
-        );
-
-  /// The file of the square, such as 'a', 'b', 'c', etc.
-  String get file => value[0];
-
-  /// The rank of the square, such as '1', '2', '3', etc.
-  String get rank => value[1];
-
-  /// The x-coordinate of the square on the board.
-  int get x => value.codeUnitAt(0) - 97;
-
-  /// The y-coordinate of the square on the board.
-  int get y => value.codeUnitAt(1) - 49;
-
-  /// The coordinate of the square on the board.
-  Coord get coord => Coord(x: x, y: y);
-}
-
 /// Representation of the piece positions on a board.
-typedef Pieces = Map<SquareId, Piece>;
+typedef Pieces = Map<Square, Piece>;
 
 /// Sets of each valid destinations for an origin square.
-typedef ValidMoves = IMap<SquareId, ISet<SquareId>>;
-
-/// Files of the chessboard.
-///
-/// This is an immutable list of strings from 'a' to 'h'.
-const files = ['a', 'b', 'c', 'd', 'e', 'f', 'g', 'h'];
-
-/// Ranks of the chessboard.
-///
-/// This is an immutable list of strings from '1' to '8'.
-const ranks = ['1', '2', '3', '4', '5', '6', '7', '8'];
-
-/// All the squares of the chessboard.
-///
-/// This is an immutable list of [SquareId] from 'a1' to 'h8'.
-final List<SquareId> allSquares = List.unmodifiable([
-  for (final f in files)
-    for (final r in ranks) SquareId('$f$r'),
-]);
-
-/// All the coordinates of the chessboard.
-///
-/// This is an immutable list of [Coord] from (0, 0) to (7, 7).
-final List<Coord> allCoords = List.unmodifiable([
-  for (final f in files)
-    for (final r in ranks) SquareId('$f$r').coord,
-]);
+typedef ValidMoves = IMap<Square, ISet<Square>>;
 
 /// Square highlight color or image on the chessboard.
 @immutable
 class HighlightDetails {
-  const HighlightDetails({
-    this.solidColor,
-    this.image,
-  }) : assert(
-          solidColor != null || image != null,
-          'You must provide either `solidColor` or `image`.',
-        );
+  const HighlightDetails({this.solidColor, this.image})
+    : assert(
+        solidColor != null || image != null,
+        'You must provide either `solidColor` or `image`.',
+      );
 
   final Color? solidColor;
   final AssetImage? image;
 }
 
-/// Zero-based numeric chessboard coordinate.
-///
-/// For instance a1 is (0, 0), a2 is (0, 1), etc.
-@immutable
-class Coord {
-  /// Creates a new [Coord] with the provided values.
-  const Coord({
-    required this.x,
-    required this.y,
-  })  : assert(x >= 0 && x <= 7),
-        assert(y >= 0 && y <= 7);
-
-  /// The x-coordinate of the coordinate.
-  final int x;
-
-  /// The y-coordinate of the coordinate.
-  final int y;
-
-  /// Gets the square identifier of the coordinate.
-  SquareId get squareId => allSquares[8 * x + y];
-
-  /// Returns the offset of the coordinate on the board based on the orientation.
-  Offset offset(Side orientation, double squareSize) {
-    final dx = (orientation == Side.black ? 7 - x : x) * squareSize;
-    final dy = (orientation == Side.black ? y : 7 - y) * squareSize;
-    return Offset(dx, dy);
-  }
-
-  @override
-  String toString() {
-    return '($x, $y)';
-  }
-
-  @override
-  bool operator ==(Object other) {
-    return identical(this, other) ||
-        other is Coord &&
-            other.runtimeType == runtimeType &&
-            other.x == x &&
-            other.y == y;
-  }
-
-  @override
-  int get hashCode => Object.hash(x, y);
-}
-
-/// A piece and its position on the board.
-@immutable
-class PositionedPiece {
-  const PositionedPiece({
-    required this.piece,
-    required this.squareId,
-    required this.coord,
-  });
-
-  final Piece piece;
-  final SquareId squareId;
-  final Coord coord;
-
-  PositionedPiece? closest(List<PositionedPiece> pieces) {
-    pieces.sort(
-      (p1, p2) => _distanceSq(coord, p1.coord) - _distanceSq(coord, p2.coord),
-    );
-    return pieces.isNotEmpty ? pieces[0] : null;
-  }
-
-  int _distanceSq(Coord pos1, Coord pos2) {
-    final dx = pos1.x - pos2.x;
-    final dy = pos1.y - pos2.y;
-    return dx * dx + dy * dy;
-  }
-}
-
-/// A chess move from one [SquareId] to another, with an optional promotion.
-@immutable
-class Move {
-  const Move({
-    required this.from,
-    required this.to,
-    this.promotion,
-  });
-
-  Move.fromUci(String uci)
-      : from = SquareId(uci.substring(0, 2)),
-        to = SquareId(uci.substring(2, 4)),
-        promotion = uci.length > 4 ? _toRole(uci.substring(4)) : null;
-
-  final SquareId from;
-  final SquareId to;
-  final Role? promotion;
-
-  List<SquareId> get squares => List.unmodifiable([from, to]);
-
-  String get uci => '$from$to${_toPieceLetter(promotion)}';
-
-  bool hasSquare(SquareId squareId) {
-    return from == squareId || to == squareId;
-  }
-
-  Move withPromotion(Role promotion) {
-    return Move(
-      from: from,
-      to: to,
-      promotion: promotion,
-    );
-  }
-
-  @override
-  bool operator ==(Object other) {
-    return identical(this, other) ||
-        other is Move &&
-            other.runtimeType == runtimeType &&
-            other.from == from &&
-            other.to == to &&
-            other.promotion == promotion;
-  }
-
-  @override
-  int get hashCode => Object.hash(from, to, promotion);
-
-  String _toPieceLetter(Role? role) {
-    return switch (role) {
-      Role.king => 'k',
-      Role.queen => 'q',
-      Role.rook => 'r',
-      Role.bishop => 'b',
-      Role.knight => 'n',
-      Role.pawn => 'p',
-      _ => ''
-    };
-  }
-}
-
 /// A chess move annotation represented by a symbol and a color.
 @immutable
 class Annotation {
-  const Annotation({
-    required this.symbol,
-    required this.color,
-    this.duration,
-  });
+  const Annotation({required this.symbol, required this.color, this.duration});
 
   /// Annotation symbol. Two letters max.
   final String symbol;
@@ -308,30 +137,13 @@ class Annotation {
   int get hashCode => Object.hash(symbol, color, duration);
 }
 
-Role _toRole(String uciLetter) {
-  switch (uciLetter.trim().toLowerCase()) {
-    case 'k':
-      return Role.king;
-    case 'q':
-      return Role.queen;
-    case 'r':
-      return Role.rook;
-    case 'b':
-      return Role.bishop;
-    case 'n':
-      return Role.knight;
-    default:
-      return Role.pawn;
-  }
-}
-
 /// Base class for shapes that can be drawn on the board.
 sealed class Shape {
   /// Scale factor for the shape. Must be between 0.0 and 1.0.
   double get scale => 1.0;
 
   /// Decides what shape to draw based on the current shape and the new destination.
-  Shape newDest(SquareId newDest);
+  Shape newDest(Square newDest);
 
   /// Returns a new shape with the same properties but a different scale.
   Shape withScale(double scale);
@@ -343,14 +155,11 @@ class Circle implements Shape {
   /// Creates a new [Circle] with the provided values.
   ///
   /// The [scale] must be between 0.0 and 1.0.
-  const Circle({
-    required this.color,
-    required this.orig,
-    this.scale = 1.0,
-  }) : assert(scale > 0.0 && scale <= 1.0);
+  const Circle({required this.color, required this.orig, this.scale = 1.0})
+    : assert(scale > 0.0 && scale <= 1.0);
 
   final Color color;
-  final SquareId orig;
+  final Square orig;
 
   /// Stroke width of the circle will be scaled by this factor.
   ///
@@ -359,7 +168,7 @@ class Circle implements Shape {
   final double scale;
 
   @override
-  Shape newDest(SquareId newDest) {
+  Shape newDest(Square newDest) {
     return newDest == orig
         ? this
         : Arrow(color: color, orig: orig, dest: newDest, scale: scale);
@@ -384,11 +193,7 @@ class Circle implements Shape {
   int get hashCode => Object.hash(color, orig, scale);
 
   /// Creates a copy of this [Circle] with the given fields replaced by the new values.
-  Circle copyWith({
-    Color? color,
-    SquareId? orig,
-    double? scale,
-  }) {
+  Circle copyWith({Color? color, Square? orig, double? scale}) {
     return Circle(
       color: color ?? this.color,
       orig: orig ?? this.orig,
@@ -401,8 +206,8 @@ class Circle implements Shape {
 @immutable
 class Arrow implements Shape {
   final Color color;
-  final SquareId orig;
-  final SquareId dest;
+  final Square orig;
+  final Square dest;
 
   /// Width of the arrow and size of its tip will be scaled by this factor.
   ///
@@ -422,8 +227,10 @@ class Arrow implements Shape {
   }) : assert(orig != dest && scale > 0.0 && scale <= 1.0);
 
   @override
-  Shape newDest(SquareId newDest) {
-    return Arrow(color: color, orig: orig, dest: newDest, scale: scale);
+  Shape newDest(Square newDest) {
+    return newDest == orig
+        ? Circle(color: color, orig: orig, scale: scale)
+        : Arrow(color: color, orig: orig, dest: newDest, scale: scale);
   }
 
   @override
@@ -446,12 +253,7 @@ class Arrow implements Shape {
   int get hashCode => Object.hash(color, orig, dest, scale);
 
   /// Creates a copy of this [Arrow] with the given fields replaced by the new values.
-  Arrow copyWith({
-    Color? color,
-    SquareId? orig,
-    SquareId? dest,
-    double? scale,
-  }) {
+  Arrow copyWith({Color? color, Square? orig, Square? dest, double? scale}) {
     return Arrow(
       color: color ?? this.color,
       orig: orig ?? this.orig,
@@ -464,30 +266,42 @@ class Arrow implements Shape {
 /// A piece shape that can be drawn on the board.
 @immutable
 class PieceShape implements Shape {
-  final Color color;
-  final Role role;
-  final SquareId orig;
+  final Color? color;
+  final Piece piece;
+  final Square orig;
+  final PieceAssets pieceAssets;
+  final double opacity;
   @override
   final double scale;
 
   /// Creates a new [PieceShape] with the provided values.
   ///
   /// The [scale] must be between 0.0 and 1.0.
+  /// The default [opacity] is 0.5 and the default [scale] is 0.9.
   const PieceShape({
-    required this.color,
-    required this.role,
+    this.color,
+    required this.piece,
     required this.orig,
-    this.scale = 1.0,
+    required this.pieceAssets,
+    this.opacity = 0.5,
+    this.scale = 0.9,
   }) : assert(scale > 0.0 && scale <= 1.0);
 
   @override
-  Shape newDest(SquareId newDest) {
+  Shape newDest(Square newDest) {
     return this;
   }
 
   @override
   Shape withScale(double newScale) {
-    return PieceShape(color: color, role: role, orig: orig, scale: newScale);
+    return PieceShape(
+      color: color,
+      piece: piece,
+      orig: orig,
+      pieceAssets: pieceAssets,
+      opacity: opacity,
+      scale: newScale,
+    );
   }
 
   @override
@@ -496,25 +310,32 @@ class PieceShape implements Shape {
         other is PieceShape &&
             other.runtimeType == runtimeType &&
             other.color == color &&
-            other.role == role &&
+            other.piece == piece &&
             other.orig == orig &&
+            other.pieceAssets == pieceAssets &&
+            other.opacity == opacity &&
             other.scale == scale;
   }
 
   @override
-  int get hashCode => Object.hash(color, role, orig, scale);
+  int get hashCode =>
+      Object.hash(color, opacity, piece, pieceAssets, orig, scale);
 
   /// Creates a copy of this [PieceShape] with the given fields replaced by the new values.
   PieceShape copyWith({
     Color? color,
-    Role? role,
-    SquareId? orig,
+    Piece? piece,
+    Square? orig,
+    PieceAssets? pieceAssets,
+    double? opacity,
     double? scale,
   }) {
     return PieceShape(
       color: color ?? this.color,
-      role: role ?? this.role,
+      piece: piece ?? this.piece,
       orig: orig ?? this.orig,
+      pieceAssets: pieceAssets ?? this.pieceAssets,
+      opacity: opacity ?? this.opacity,
       scale: scale ?? this.scale,
     );
   }

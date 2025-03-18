@@ -1,5 +1,6 @@
 import 'dart:math' as math;
-import 'package:dartchess/dartchess.dart' show Side;
+import 'package:chessground/src/widgets/geometry.dart';
+import 'package:dartchess/dartchess.dart';
 import 'package:flutter/widgets.dart';
 
 import '../models.dart';
@@ -8,11 +9,11 @@ import 'positioned_square.dart';
 /// A Widget that displays a shape overlay on the board.
 ///
 /// Typically used to display arrows, circles, and piece masks on the board.
-class ShapeWidget extends StatelessWidget {
+class ShapeWidget extends StatelessWidget with ChessboardGeometry {
   const ShapeWidget({
     super.key,
     required this.shape,
-    required this.boardSize,
+    required this.size,
     required this.orientation,
   });
 
@@ -21,66 +22,71 @@ class ShapeWidget extends StatelessWidget {
   /// Currently supported shapes are [Arrow], [Circle], and [PieceShape].
   final Shape shape;
 
-  /// Size of the board the shape will overlay.
-  final double boardSize;
+  @override
+  final double size;
 
-  /// Orientation of the board.
+  @override
   final Side orientation;
-
-  double get squareSize => boardSize / 8;
 
   @override
   Widget build(BuildContext context) {
-    return switch (shape) {
-      Arrow(
+    switch (shape) {
+      case Arrow(
         color: final color,
         orig: final orig,
         dest: final dest,
         scale: final scale,
-      ) =>
-        SizedBox.square(
-          dimension: boardSize,
+      ):
+        return SizedBox.square(
+          dimension: size,
           child: CustomPaint(
             painter: _ArrowPainter(
               color,
               orientation,
-              orig.coord,
-              dest.coord,
+              squareOffset(orig),
+              squareOffset(dest),
               scale,
             ),
           ),
-        ),
-      Circle(color: final color, orig: final orig, scale: final scale) =>
-        SizedBox.square(
-          dimension: boardSize,
+        );
+      case Circle(color: final color, orig: final orig, scale: final scale):
+        return SizedBox.square(
+          dimension: size,
           child: CustomPaint(
             painter: _CirclePainter(
               color,
               orientation,
-              orig.coord,
+              squareOffset(orig),
               scale,
             ),
           ),
-        ),
-      PieceShape(
-        orig: final orig,
-        role: final role,
+        );
+      case PieceShape(
         color: final color,
-        scale: final scale
-      ) =>
-        PositionedSquare(
-          size: squareSize,
-          orientation: orientation,
-          squareId: orig,
-          child: Image.asset(
-            'assets/piece_sets/mono/${role.uppercaseLetter}.png',
-            package: 'chessground',
-            color: color,
-            width: scale * squareSize,
-            height: scale * squareSize,
-          ),
-        ),
-    };
+        orig: final orig,
+        piece: final piece,
+        pieceAssets: final pieceAssets,
+        opacity: final opacity,
+        scale: final scale,
+      ):
+        {
+          final asset = pieceAssets[piece.kind]!;
+          return PositionedSquare(
+            size: size,
+            orientation: orientation,
+            square: orig,
+            child: Image.asset(
+              asset.assetName,
+              bundle: asset.bundle,
+              package: asset.package,
+              color: color,
+              opacity: AlwaysStoppedAnimation(opacity),
+              width: scale * squareSize,
+              height: scale * squareSize,
+            ),
+          );
+        }
+    }
   }
 }
 
@@ -88,35 +94,38 @@ class _ArrowPainter extends CustomPainter {
   _ArrowPainter(
     this.color,
     this.orientation,
-    this.fromCoord,
-    this.toCoord,
+    this.fromOffset,
+    this.toOffset,
     this.scale,
   );
 
   final Color color;
   final Side orientation;
-  final Coord fromCoord;
-  final Coord toCoord;
+  final Offset fromOffset;
+  final Offset toOffset;
   final double scale;
 
   @override
   void paint(Canvas canvas, Size size) {
     final squareSize = size.width / 8;
     final lineWidth = scale * squareSize / 4;
-    final paint = Paint()
-      ..strokeWidth = lineWidth
-      ..color = color
-      ..style = PaintingStyle.stroke;
+    final paint =
+        Paint()
+          ..strokeWidth = lineWidth
+          ..color = color
+          ..style = PaintingStyle.stroke;
 
-    final fromOffset = fromCoord.offset(orientation, squareSize);
-    final toOffset = toCoord.offset(orientation, squareSize);
     final shift = Offset(squareSize / 2, squareSize / 2);
     final margin = squareSize / 3;
 
-    final angle =
-        math.atan2(toOffset.dy - fromOffset.dy, toOffset.dx - fromOffset.dx);
-    final fromMarginOffset =
-        Offset(margin * math.cos(angle), margin * math.sin(angle));
+    final angle = math.atan2(
+      toOffset.dy - fromOffset.dy,
+      toOffset.dx - fromOffset.dx,
+    );
+    final fromMarginOffset = Offset(
+      margin * math.cos(angle),
+      margin * math.sin(angle),
+    );
     final arrowSize = scale * squareSize * 0.48;
     const arrowAngle = math.pi / 5;
 
@@ -136,14 +145,17 @@ class _ArrowPainter extends CustomPainter {
     path.close();
 
     final arrowHeight = arrowSize * math.sin((math.pi - (arrowAngle * 2)) / 2);
-    final arrowOffset =
-        Offset(arrowHeight * math.cos(angle), arrowHeight * math.sin(angle));
+    final arrowOffset = Offset(
+      arrowHeight * math.cos(angle),
+      arrowHeight * math.sin(angle),
+    );
 
     canvas.drawLine(from, to - arrowOffset, paint);
 
-    final pathPaint = paint
-      ..strokeWidth = 0
-      ..style = PaintingStyle.fill;
+    final pathPaint =
+        paint
+          ..strokeWidth = 0
+          ..style = PaintingStyle.fill;
     canvas.drawPath(path, pathPaint);
   }
 
@@ -151,43 +163,43 @@ class _ArrowPainter extends CustomPainter {
   bool shouldRepaint(_ArrowPainter oldDelegate) {
     return color != oldDelegate.color ||
         orientation != oldDelegate.orientation ||
-        fromCoord != oldDelegate.fromCoord ||
-        toCoord != oldDelegate.toCoord ||
+        fromOffset != oldDelegate.fromOffset ||
+        toOffset != oldDelegate.toOffset ||
         scale != oldDelegate.scale;
   }
 }
 
 class _CirclePainter extends CustomPainter {
-  _CirclePainter(this.color, this.orientation, this.circleCoord, this.scale);
+  _CirclePainter(this.color, this.orientation, this.circleOffset, this.scale);
   final Color color;
   final Side orientation;
-  final Coord circleCoord;
+  final Offset circleOffset;
   final double scale;
 
   @override
   void paint(Canvas canvas, Size size) {
     final squareSize = size.width / 8;
     final lineWidth = scale * squareSize / 16;
-    final paint = Paint()
-      ..strokeWidth = lineWidth
-      ..color = color
-      ..style = PaintingStyle.stroke;
+    final paint =
+        Paint()
+          ..strokeWidth = lineWidth
+          ..color = color
+          ..style = PaintingStyle.stroke;
 
-    final circle = Path()
-      ..addOval(
-        Rect.fromCircle(
-          center: circleCoord.offset(orientation, squareSize) +
-              Offset(squareSize / 2, squareSize / 2),
-          radius: squareSize / 2 - lineWidth / 2,
-        ),
-      );
+    final circle =
+        Path()..addOval(
+          Rect.fromCircle(
+            center: circleOffset + Offset(squareSize / 2, squareSize / 2),
+            radius: squareSize / 2 - lineWidth / 2,
+          ),
+        );
     canvas.drawPath(circle, paint);
   }
 
   @override
   bool shouldRepaint(_CirclePainter oldDelegate) {
     return color != oldDelegate.color ||
-        circleCoord != oldDelegate.circleCoord ||
+        circleOffset != oldDelegate.circleOffset ||
         orientation != oldDelegate.orientation ||
         scale != oldDelegate.scale;
   }

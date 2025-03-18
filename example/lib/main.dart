@@ -1,9 +1,10 @@
+import 'dart:async';
 import 'dart:math';
 import 'package:board_example/board_editor_page.dart';
 import 'package:flutter/material.dart';
 import 'package:chessground/chessground.dart';
 import 'package:fast_immutable_collections/fast_immutable_collections.dart';
-import 'package:dartchess/dartchess.dart' as dc;
+import 'package:dartchess/dartchess.dart';
 
 import 'board_theme.dart';
 import 'board_thumbnails.dart';
@@ -42,6 +43,7 @@ String pieceShiftMethodLabel(PieceShiftMethod method) {
 
 enum Mode {
   botPlay,
+  inputMove,
   freePlay,
 }
 
@@ -55,31 +57,189 @@ class HomePage extends StatefulWidget {
 }
 
 class _HomePageState extends State<HomePage> {
-  dc.Position<dc.Chess> position = dc.Chess.initial;
-  dc.Side orientation = dc.Side.white;
-  String fen = dc.kInitialBoardFEN;
-  Move? lastMove;
-  Move? premove;
+  Position position = Chess.initial;
+  Side orientation = Side.white;
+  String fen = kInitialBoardFEN;
+  NormalMove? lastMove;
+  NormalMove? promotionMove;
+  NormalMove? premove;
   ValidMoves validMoves = IMap(const {});
-  dc.Side sideToMove = dc.Side.white;
-  PieceSet pieceSet = PieceSet.merida;
+  Side sideToMove = Side.white;
+  PieceSet pieceSet = PieceSet.gioco;
   PieceShiftMethod pieceShiftMethod = PieceShiftMethod.either;
-  BoardTheme boardTheme = BoardTheme.blue;
+  DragTargetKind dragTargetKind = DragTargetKind.circle;
+  BoardTheme boardTheme = BoardTheme.brown;
   bool drawMode = true;
   bool pieceAnimation = true;
   bool dragMagnify = true;
   Mode playMode = Mode.botPlay;
-  dc.Position<dc.Chess>? lastPos;
+  Position? lastPos;
   ISet<Shape> shapes = ISet();
+  bool showBorder = false;
 
   @override
   Widget build(BuildContext context) {
     final double screenWidth = MediaQuery.of(context).size.width;
 
+    final settingsWidgets = [
+      Row(
+        mainAxisAlignment: MainAxisAlignment.center,
+        mainAxisSize: MainAxisSize.max,
+        children: [
+          ElevatedButton(
+            child: Text("Magnify drag: ${dragMagnify ? 'ON' : 'OFF'}"),
+            onPressed: () {
+              setState(() {
+                dragMagnify = !dragMagnify;
+              });
+            },
+          ),
+          const SizedBox(width: 8),
+          ElevatedButton(
+            child: Text('Drag target: ${dragTargetKind.name}'),
+            onPressed: () => _showChoicesPicker<DragTargetKind>(
+              context,
+              choices: DragTargetKind.values,
+              selectedItem: dragTargetKind,
+              labelBuilder: (t) => Text(t.name),
+              onSelectedItemChanged: (DragTargetKind value) {
+                setState(() {
+                  dragTargetKind = value;
+                });
+              },
+            ),
+          ),
+        ],
+      ),
+      Row(
+        mainAxisAlignment: MainAxisAlignment.center,
+        mainAxisSize: MainAxisSize.max,
+        children: [
+          ElevatedButton(
+            child: Text('Orientation: ${orientation.name}'),
+            onPressed: () {
+              setState(() {
+                orientation = orientation.opposite;
+              });
+            },
+          ),
+          const SizedBox(width: 8),
+          ElevatedButton(
+            child: Text("Piece animation: ${pieceAnimation ? 'ON' : 'OFF'}"),
+            onPressed: () {
+              setState(() {
+                pieceAnimation = !pieceAnimation;
+              });
+            },
+          ),
+        ],
+      ),
+      Row(
+        mainAxisAlignment: MainAxisAlignment.center,
+        mainAxisSize: MainAxisSize.max,
+        children: [
+          ElevatedButton(
+            child: Text('Piece set: ${pieceSet.label}'),
+            onPressed: () => _showChoicesPicker<PieceSet>(
+              context,
+              choices: PieceSet.values,
+              selectedItem: pieceSet,
+              labelBuilder: (t) => Text(t.label),
+              onSelectedItemChanged: (PieceSet? value) {
+                setState(() {
+                  if (value != null) {
+                    pieceSet = value;
+                  }
+                });
+              },
+            ),
+          ),
+          const SizedBox(width: 8),
+          ElevatedButton(
+            child: Text('Board theme: ${boardTheme.label}'),
+            onPressed: () => _showChoicesPicker<BoardTheme>(
+              context,
+              choices: BoardTheme.values,
+              selectedItem: boardTheme,
+              labelBuilder: (t) => Text(t.label),
+              onSelectedItemChanged: (BoardTheme? value) {
+                setState(() {
+                  if (value != null) {
+                    boardTheme = value;
+                  }
+                });
+              },
+            ),
+          ),
+        ],
+      ),
+      Row(
+        mainAxisAlignment: MainAxisAlignment.center,
+        mainAxisSize: MainAxisSize.max,
+        children: [
+          ElevatedButton(
+            child:
+                Text('Piece Shift: ${pieceShiftMethodLabel(pieceShiftMethod)}'),
+            onPressed: () => _showChoicesPicker<PieceShiftMethod>(
+              context,
+              choices: PieceShiftMethod.values,
+              selectedItem: pieceShiftMethod,
+              labelBuilder: (t) => Text(pieceShiftMethodLabel(t)),
+              onSelectedItemChanged: (PieceShiftMethod? value) {
+                setState(() {
+                  if (value != null) {
+                    pieceShiftMethod = value;
+                  }
+                });
+              },
+            ),
+          ),
+          const SizedBox(width: 8),
+          ElevatedButton(
+            child: Text("Show border: ${showBorder ? 'ON' : 'OFF'}"),
+            onPressed: () {
+              setState(() {
+                showBorder = !showBorder;
+              });
+            },
+          ),
+        ],
+      ),
+      if (playMode == Mode.freePlay)
+        Center(
+            child: IconButton(
+                onPressed: lastPos != null
+                    ? () => setState(() {
+                          position = lastPos!;
+                          fen = position.fen;
+                          validMoves = makeLegalMoves(position);
+                          lastPos = null;
+                        })
+                    : null,
+                icon: const Icon(Icons.chevron_left_sharp))),
+    ];
+
+    final inputMoveWidgets = [
+      Padding(
+        padding: const EdgeInsets.all(8.0),
+        child: TextField(
+          decoration: const InputDecoration(
+            labelText: 'Enter move in UCI format',
+          ),
+          onSubmitted: (String value) {
+            final move = NormalMove.fromUci(value);
+            _playMove(move);
+            _tryPlayPremove();
+          },
+        ),
+      ),
+    ];
+
     return Scaffold(
       appBar: AppBar(
           title: switch (playMode) {
         Mode.botPlay => const Text('Random Bot'),
+        Mode.inputMove => const Text('Enter opponent move'),
         Mode.freePlay => const Text('Free Play'),
       }),
       drawer: Drawer(
@@ -91,9 +251,18 @@ class _HomePageState extends State<HomePage> {
               setState(() {
                 playMode = Mode.botPlay;
               });
-              if (position.turn == dc.Side.black) {
+              if (position.turn == Side.black) {
                 _playBlackMove();
               }
+              Navigator.pop(context);
+            },
+          ),
+          ListTile(
+            title: const Text('Enter opponent move'),
+            onTap: () {
+              setState(() {
+                playMode = Mode.inputMove;
+              });
               Navigator.pop(context);
             },
           ),
@@ -130,186 +299,81 @@ class _HomePageState extends State<HomePage> {
           ),
         ],
       )),
-      body: Center(
-        child: Column(
-          mainAxisAlignment: MainAxisAlignment.spaceEvenly,
-          children: [
-            Chessboard(
-              size: screenWidth,
-              settings: ChessboardSettings(
-                pieceAssets: pieceSet.assets,
-                colorScheme: boardTheme.colors,
-                enableCoordinates: true,
-                animationDuration: pieceAnimation
-                    ? const Duration(milliseconds: 200)
-                    : Duration.zero,
-                dragFeedbackScale: dragMagnify ? 2.0 : 1.0,
-                drawShape: DrawShapeOptions(
-                  enable: drawMode,
-                  onCompleteShape: _onCompleteShape,
-                  onClearShapes: () {
-                    setState(() {
-                      shapes = ISet();
-                    });
-                  },
-                ),
-                pieceShiftMethod: pieceShiftMethod,
+      body: Column(
+        mainAxisAlignment: MainAxisAlignment.spaceEvenly,
+        children: [
+          Chessboard(
+            size: screenWidth,
+            settings: ChessboardSettings(
+              pieceAssets: pieceSet.assets,
+              colorScheme: boardTheme.colors,
+              border: showBorder
+                  ? BoardBorder(
+                      width: 16.0,
+                      color: _darken(boardTheme.colors.darkSquare, 0.2),
+                    )
+                  : null,
+              enableCoordinates: true,
+              animationDuration: pieceAnimation
+                  ? const Duration(milliseconds: 200)
+                  : Duration.zero,
+              dragFeedbackScale: dragMagnify ? 2.0 : 1.0,
+              dragTargetKind: dragTargetKind,
+              drawShape: DrawShapeOptions(
+                enable: drawMode,
+                onCompleteShape: _onCompleteShape,
+                onClearShapes: () {
+                  setState(() {
+                    shapes = ISet();
+                  });
+                },
               ),
-              state: ChessboardState(
-                interactableSide: playMode == Mode.botPlay
-                    ? InteractableSide.white
-                    : (position.turn == dc.Side.white
-                        ? InteractableSide.white
-                        : InteractableSide.black),
-                validMoves: validMoves,
-                orientation: orientation,
-                opponentsPiecesUpsideDown: playMode == Mode.freePlay,
-                fen: fen,
-                lastMove: lastMove,
-                sideToMove: position.turn == dc.Side.white
-                    ? dc.Side.white
-                    : dc.Side.black,
-                isCheck: position.isCheck,
+              pieceShiftMethod: pieceShiftMethod,
+              autoQueenPromotionOnPremove: false,
+              pieceOrientationBehavior: playMode == Mode.freePlay
+                  ? PieceOrientationBehavior.opponentUpsideDown
+                  : PieceOrientationBehavior.facingUser,
+            ),
+            orientation: orientation,
+            fen: fen,
+            lastMove: lastMove,
+            game: GameData(
+              playerSide:
+                  (playMode == Mode.botPlay || playMode == Mode.inputMove)
+                      ? PlayerSide.white
+                      : (position.turn == Side.white
+                          ? PlayerSide.white
+                          : PlayerSide.black),
+              validMoves: validMoves,
+              sideToMove: position.turn == Side.white ? Side.white : Side.black,
+              isCheck: position.isCheck,
+              promotionMove: promotionMove,
+              onMove:
+                  playMode == Mode.botPlay ? _onUserMoveAgainstBot : _playMove,
+              onPromotionSelection: _onPromotionSelection,
+              premovable: (
+                onSetPremove: _onSetPremove,
                 premove: premove,
-                shapes: shapes.isNotEmpty ? shapes : null,
               ),
-              onMove: playMode == Mode.botPlay
-                  ? _onUserMoveAgainstBot
-                  : _onUserMoveFreePlay,
-              onPremove: _onSetPremove,
             ),
-            Column(
-              crossAxisAlignment: CrossAxisAlignment.center,
-              children: [
-                Row(
-                  mainAxisAlignment: MainAxisAlignment.center,
-                  mainAxisSize: MainAxisSize.max,
-                  children: [
-                    ElevatedButton(
-                      child: Text('Orientation: ${orientation.name}'),
-                      onPressed: () {
-                        setState(() {
-                          orientation = orientation.opposite;
-                        });
-                      },
-                    ),
-                    const SizedBox(width: 8),
-                    ElevatedButton(
-                      child:
-                          Text("Magnify drag: ${dragMagnify ? 'ON' : 'OFF'}"),
-                      onPressed: () {
-                        setState(() {
-                          dragMagnify = !dragMagnify;
-                        });
-                      },
-                    ),
-                  ],
-                ),
-                Row(
-                  mainAxisAlignment: MainAxisAlignment.center,
-                  mainAxisSize: MainAxisSize.max,
-                  children: [
-                    ElevatedButton(
-                      child: Text("Drawing mode: ${drawMode ? 'ON' : 'OFF'}"),
-                      onPressed: () {
-                        setState(() {
-                          drawMode = !drawMode;
-                        });
-                      },
-                    ),
-                    const SizedBox(width: 8),
-                    ElevatedButton(
-                      child: Text(
-                          "Piece animation: ${pieceAnimation ? 'ON' : 'OFF'}"),
-                      onPressed: () {
-                        setState(() {
-                          pieceAnimation = !pieceAnimation;
-                        });
-                      },
-                    ),
-                  ],
-                ),
-                Row(
-                  mainAxisAlignment: MainAxisAlignment.center,
-                  mainAxisSize: MainAxisSize.max,
-                  children: [
-                    ElevatedButton(
-                      child: Text('Piece set: ${pieceSet.label}'),
-                      onPressed: () => _showChoicesPicker<PieceSet>(
-                        context,
-                        choices: PieceSet.values,
-                        selectedItem: pieceSet,
-                        labelBuilder: (t) => Text(t.label),
-                        onSelectedItemChanged: (PieceSet? value) {
-                          setState(() {
-                            if (value != null) {
-                              pieceSet = value;
-                            }
-                          });
-                        },
-                      ),
-                    ),
-                    const SizedBox(width: 8),
-                    ElevatedButton(
-                      child: Text('Board theme: ${boardTheme.label}'),
-                      onPressed: () => _showChoicesPicker<BoardTheme>(
-                        context,
-                        choices: BoardTheme.values,
-                        selectedItem: boardTheme,
-                        labelBuilder: (t) => Text(t.label),
-                        onSelectedItemChanged: (BoardTheme? value) {
-                          setState(() {
-                            if (value != null) {
-                              boardTheme = value;
-                            }
-                          });
-                        },
-                      ),
-                    ),
-                  ],
-                ),
-                Row(
-                  mainAxisAlignment: MainAxisAlignment.center,
-                  mainAxisSize: MainAxisSize.max,
-                  children: [
-                    ElevatedButton(
-                      child: Text(
-                          'Piece shift method: ${pieceShiftMethodLabel(pieceShiftMethod)}'),
-                      onPressed: () => _showChoicesPicker<PieceShiftMethod>(
-                        context,
-                        choices: PieceShiftMethod.values,
-                        selectedItem: pieceShiftMethod,
-                        labelBuilder: (t) => Text(pieceShiftMethodLabel(t)),
-                        onSelectedItemChanged: (PieceShiftMethod? value) {
-                          setState(() {
-                            if (value != null) {
-                              pieceShiftMethod = value;
-                            }
-                          });
-                        },
-                      ),
-                    ),
-                    const SizedBox(width: 8),
-                  ],
-                ),
-                if (playMode == Mode.freePlay)
-                  Center(
-                      child: IconButton(
-                          onPressed: lastPos != null
-                              ? () => setState(() {
-                                    position = lastPos!;
-                                    fen = position.fen;
-                                    validMoves = legalMovesOf(position);
-                                    lastPos = null;
-                                  })
-                              : null,
-                          icon: const Icon(Icons.chevron_left_sharp))),
-              ],
-            ),
-          ],
-        ),
+            shapes: shapes.isNotEmpty ? shapes : null,
+          ),
+          Column(
+            crossAxisAlignment: CrossAxisAlignment.center,
+            children:
+                playMode == Mode.inputMove ? inputMoveWidgets : settingsWidgets,
+          ),
+        ],
       ),
     );
+  }
+
+  void _tryPlayPremove() {
+    if (premove != null) {
+      Timer.run(() {
+        _playMove(premove!, isPremove: true);
+      });
+    }
   }
 
   void _onCompleteShape(Shape shape) {
@@ -365,63 +429,116 @@ class _HomePageState extends State<HomePage> {
 
   @override
   void initState() {
-    validMoves = legalMovesOf(position);
+    validMoves = makeLegalMoves(position);
     super.initState();
   }
 
-  void _onSetPremove(Move? move) {
+  void _onSetPremove(NormalMove? move) {
     setState(() {
       premove = move;
     });
   }
 
-  void _onUserMoveFreePlay(Move move, {bool? isDrop, bool? isPremove}) {
-    lastPos = position;
-    final m = dc.Move.fromUci(move.uci)!;
+  void _onPromotionSelection(Role? role) {
+    if (role == null) {
+      _onPromotionCancel();
+    } else if (promotionMove != null) {
+      if (playMode == Mode.botPlay) {
+        _onUserMoveAgainstBot(promotionMove!.withPromotion(role));
+      } else {
+        _playMove(promotionMove!.withPromotion(role));
+      }
+    }
+  }
+
+  void _onPromotionCancel() {
     setState(() {
-      position = position.playUnchecked(m);
-      lastMove = move;
-      fen = position.fen;
-      validMoves = legalMovesOf(position);
+      promotionMove = null;
     });
   }
 
-  void _onUserMoveAgainstBot(Move move, {bool? isDrop, bool? isPremove}) async {
+  void _playMove(NormalMove move, {bool? isDrop, bool? isPremove}) {
     lastPos = position;
-    final m = dc.Move.fromUci(move.uci)!;
-    setState(() {
-      position = position.playUnchecked(m);
-      lastMove = move;
-      fen = position.fen;
-      validMoves = IMap(const {});
-    });
-    await _playBlackMove();
+    if (isPromotionPawnMove(move)) {
+      setState(() {
+        promotionMove = move;
+      });
+    } else if (position.isLegal(move)) {
+      setState(() {
+        position = position.playUnchecked(move);
+        lastMove = move;
+        fen = position.fen;
+        validMoves = makeLegalMoves(position);
+        promotionMove = null;
+        if (isPremove == true) {
+          premove = null;
+        }
+      });
+    }
+  }
+
+  void _onUserMoveAgainstBot(NormalMove move, {isDrop}) async {
+    lastPos = position;
+    if (isPromotionPawnMove(move)) {
+      setState(() {
+        promotionMove = move;
+      });
+    } else {
+      setState(() {
+        position = position.playUnchecked(move);
+        lastMove = move;
+        fen = position.fen;
+        validMoves = IMap(const {});
+        promotionMove = null;
+      });
+      await _playBlackMove();
+      _tryPlayPremove();
+    }
   }
 
   Future<void> _playBlackMove() async {
     Future.delayed(const Duration(milliseconds: 100)).then((value) {
       setState(() {});
     });
-    if (!position.isGameOver) {
-      final random = Random();
-      await Future.delayed(Duration(milliseconds: random.nextInt(1000) + 500));
-      final allMoves = [
-        for (final entry in position.legalMoves.entries)
-          for (final dest in entry.value.squares)
-            dc.NormalMove(from: entry.key, to: dest)
-      ];
-      if (allMoves.isNotEmpty) {
-        final mv = (allMoves..shuffle()).first;
-        setState(() {
-          position = position.playUnchecked(mv);
-          lastMove = Move(
-              from: SquareId(dc.toAlgebraic(mv.from)),
-              to: SquareId(dc.toAlgebraic(mv.to)));
-          fen = position.fen;
-          validMoves = legalMovesOf(position);
-        });
-        lastPos = position;
+    if (position.isGameOver) return;
+
+    final random = Random();
+    await Future.delayed(Duration(milliseconds: random.nextInt(1000) + 500));
+    final allMoves = [
+      for (final entry in position.legalMoves.entries)
+        for (final dest in entry.value.squares)
+          NormalMove(from: entry.key, to: dest)
+    ];
+    if (allMoves.isNotEmpty) {
+      NormalMove mv = (allMoves..shuffle()).first;
+      // Auto promote to a random non-pawn role
+      if (isPromotionPawnMove(mv)) {
+        final potentialRoles =
+            Role.values.where((role) => role != Role.pawn).toList();
+        final role = potentialRoles[random.nextInt(potentialRoles.length)];
+        mv = mv.withPromotion(role);
       }
+
+      setState(() {
+        position = position.playUnchecked(mv);
+        lastMove =
+            NormalMove(from: mv.from, to: mv.to, promotion: mv.promotion);
+        fen = position.fen;
+        validMoves = makeLegalMoves(position);
+      });
+      lastPos = position;
     }
   }
+
+  bool isPromotionPawnMove(NormalMove move) {
+    return move.promotion == null &&
+        position.board.roleAt(move.from) == Role.pawn &&
+        ((move.to.rank == Rank.first && position.turn == Side.black) ||
+            (move.to.rank == Rank.eighth && position.turn == Side.white));
+  }
+}
+
+Color _darken(Color c, [double amount = .1]) {
+  assert(amount >= 0 && amount <= 1);
+  return Color.lerp(c, const Color(0xFF000000), amount) ?? c;
 }

@@ -1,17 +1,128 @@
+## 7.0.0
+
+- Make the `hue` setting apply only to the board background to avoid changing
+  board highlights colors.
+- Update dependencies
+- Update minimum Dart SDK version to 3.7.0 and minimum Flutter version to
+  3.29.0
+
+## 7.0.0-beta.1
+
+- Update dependencies
+- Update minimum Dart SDK version to 3.7.0 and minimum Flutter version to
+  3.29.0
+
+## 6.3.0
+
+- Added an `onTouchedSquare` callback to `Chessboard`
+- `Chessboard` now supports highlighting arbitrary squares.
+- `StaticChessboard` now supports position change animations.
+
+## 6.2.3
+
+- Fix board editor color filter
+
+## 6.2.2
+
+- Fix default value of brightness
+
+## 6.2.1
+
+- Improved the color filter
+- Values of hue and brightness are now precised in the documentation
+- `BrightnessHueFilter` widget is now exposed.
+
+## 6.2.0
+
+- Add the possibility to change board colors
+
+## 6.1.0
+
+- Added a new `DragTargetKind` settings to control the appearance of the drag
+  target.
+- Detects if the drag is triggered with a mouse or a touch event, and adjust the
+  drag settings accordingly to provide a better experience.
+- Removed the `withValues` not yet available in specified dart sdk version.
+
+## 6.0.0
+
+### Breaking changes:
+- Removed `ChessboardEditorSettings`. The `ChessboardEditor` widget now takes a
+  `ChessboardSettings` object as a parameter.
+
+### New features:
+- Add a new `border` settings to show a border around the board.
+
+### Bug fixes:
+- Fixed a timer not properly canceled when the board is disposed.
+
+## 5.3.0
+
+- Added a new `StaticChessboard` widget that is optimized for scrollable
+  contexts.
+- `SolidColorChessboardBackground` is now implemented with `CustomPaint` to improve
+  performance when building a lot of boards.
+- Added a new board colorscheme: `ic`.
+
+## 5.2.0
+
+- Introduced a `ChessgroundImages` singleton to precache piece images. This is
+  useful when using the same piece set in multiple places, and to avoid using the
+  global flutter image cache, which can be unpredictable.
+  It should prevent any "blinking" effect that could happen with the `Image`
+  widget when the image is reloaded from the cache.
+
+## 5.1.1
+
+- Reset animation state when the board is updated. This fixes potential issues
+  where the board would display ghost pieces on some conditions.
+
+## 5.1.0
+
+- Dragging a piece to the same square will now keep the piece selected.
+
+## 5.0.0
+
+- Added another `Chessboard.fixed` constructor that allows to set the board to a
+  fixed position.
+- Premove state is now lifted up to the parent widget, in order to allow
+  instant play of premoves.
+- Promotion state is now lifted up to the parent widget, in order to allow more
+  control over the promotion dialog.
+- Add symmetric piece set (`PieceAssets.symmetric`).
+- `ChessboardEditor` now supports highlighting squares.
+- Flip `BoardSettings.dragFeedbackOffset.dy` for flipped pieces.
+  Support displaying all pieces upside down based on side to move.
+- Fix: ensure the board background does not overflow the board.
+
+### Breaking changes:
+- `Chessboard` now require a `game` parameter of type `GameData` instead
+  of `BoardData`.
+- Added required parameters `piece` and `pieceAssets` to `PieceShape`, removed `role`. Added optional
+  `opacity` parameter.
+- Remove 'ChessboardState.opponentsPiecesUpsideDown' in favor of `ChessboardSettings.pieceOrientationBehavior`.
+
 ## 4.0.0
 
 ### New features:
-- Add a `ChessboardEditor` widget, intended to be used as the basis for a board editor like lichess.org/editor
-- `SquareId` is now an extension type on String.
+- Add a `ChessboardEditor` widget, intended to be used as the basis for a board editor like lichess.org/editor.
 - Add the `writeFen` helper function.
-- Add the `legalMovesOf` helper function to convert a dartchess `Position` to a
-  set of valid moves compatible with Chessground.
 
 ### Breaking changes:
 - Requires an SDK version of at least 3.3.0.
-- Chessground is now dependant on `dartchess`. It is only used to share
-  common types: `Role`, `Side` and `Piece`. It is not used for any chess logic.
-- `Board` has been renamed to `Chessboard`.
+- Chessground is now dependant on `dartchess`. It is only used for the models,
+  and not for the game logic, so Chessground can still be used with any chess
+  library.
+- `Board` has been renamed to `Chessboard`, along with other classes.
+
+### Bug fixes:
+- Fix arrow bad shape when new destination is the same as the origin: it now
+  returns a circle.
+- Fix unsetting premoves:
+    - When a premove is set, tapping on the same origin square will now unset
+        it.
+    - dragging a piece to an invalid square will now unset the premove.
+    - dragging a piece off the board will now unset the premove.
 
 ## 3.2.0
 

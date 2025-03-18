@@ -14,7 +14,62 @@ enum PieceShiftMethod {
   drag,
 
   /// Both tap and drag are enabled.
-  either;
+  either,
+}
+
+/// Describes how pieces on the board are oriented.
+enum PieceOrientationBehavior {
+  /// Pieces are always facing user (the default).
+  facingUser,
+
+  /// Opponent's pieces are upside down, for over the board play face to face.
+  opponentUpsideDown,
+
+  /// Piece orientation matches side to play, for over the board play where each user grabs the device in turn.
+  sideToPlay,
+}
+
+/// Describes the kind of drag target highlighted on the board when dragging a piece.
+enum DragTargetKind {
+  /// A circle twice the size of a board square.
+  circle,
+
+  /// A square the size of a board square.
+  square,
+
+  /// No target is shown.
+  none,
+}
+
+/// Describes the border of the board.
+@immutable
+class BoardBorder {
+  /// Creates a new border with the provided values.
+  const BoardBorder({required this.color, required this.width});
+
+  /// Color of the border
+  final Color color;
+
+  /// Width of the border
+  final double width;
+
+  @override
+  bool operator ==(Object other) {
+    if (identical(this, other)) {
+      return true;
+    }
+    if (other.runtimeType != runtimeType) {
+      return false;
+    }
+    return other is BoardBorder && other.color == color && other.width == width;
+  }
+
+  @override
+  int get hashCode => Object.hash(color, width);
+
+  BoardBorder copyWith({Color? color, double? width}) {
+    return BoardBorder(color: color ?? this.color, width: width ?? this.width);
+  }
 }
 
 /// Board settings that controls visual aspects and behavior of the board.
@@ -28,8 +83,11 @@ class ChessboardSettings {
     this.colorScheme = ChessboardColorScheme.brown,
     this.pieceAssets = PieceSet.cburnettAssets,
     // visual settings
+    this.border,
     this.borderRadius = BorderRadius.zero,
     this.boxShadow = const <BoxShadow>[],
+    this.brightness = 1.0,
+    this.hue = 0.0,
     this.enableCoordinates = true,
     this.animationDuration = const Duration(milliseconds: 250),
     this.showLastMove = true,
@@ -37,6 +95,8 @@ class ChessboardSettings {
     this.blindfoldMode = false,
     this.dragFeedbackScale = 2.0,
     this.dragFeedbackOffset = const Offset(0.0, -1.0),
+    this.dragTargetKind = DragTargetKind.circle,
+    this.pieceOrientationBehavior = PieceOrientationBehavior.facingUser,
 
     // shape drawing
     this.drawShape = const DrawShapeOptions(),
@@ -54,11 +114,25 @@ class ChessboardSettings {
   /// Piece set
   final PieceAssets pieceAssets;
 
+  /// Optional border of the board
+  final BoardBorder? border;
+
   /// Border radius of the board
   final BorderRadiusGeometry borderRadius;
 
   /// Box shadow of the board
   final List<BoxShadow> boxShadow;
+
+  /// Brightness adjustment of the board
+  ///
+  /// A value under 1.0 darkens the board, while a value over 1.0 brightens it.
+  /// A value of 0.0 will make it completely black. Default value is 1.0.
+  final double brightness;
+
+  /// Hue rotation of the board as an angle in degree from 0.0 to 360.0.
+  ///
+  /// A value of 0.0 leaves the hue unchanged. Default value is 0.0.
+  final double hue;
 
   /// Whether to show board coordinates
   final bool enableCoordinates;
@@ -80,6 +154,12 @@ class ChessboardSettings {
 
   // Offset for the piece currently under drag
   final Offset dragFeedbackOffset;
+
+  /// The kind of drag target highlight when dragging a piece
+  final DragTargetKind dragTargetKind;
+
+  /// Controls if any pieces are displayed upside down.
+  final PieceOrientationBehavior pieceOrientationBehavior;
 
   /// Whether castling is enabled with a premove.
   final bool enablePremoveCastling;
@@ -109,6 +189,7 @@ class ChessboardSettings {
     return other is ChessboardSettings &&
         other.colorScheme == colorScheme &&
         other.pieceAssets == pieceAssets &&
+        other.border == border &&
         other.borderRadius == borderRadius &&
         other.boxShadow == boxShadow &&
         other.enableCoordinates == enableCoordinates &&
@@ -118,6 +199,8 @@ class ChessboardSettings {
         other.blindfoldMode == blindfoldMode &&
         other.dragFeedbackScale == dragFeedbackScale &&
         other.dragFeedbackOffset == dragFeedbackOffset &&
+        other.dragTargetKind == dragTargetKind &&
+        other.pieceOrientationBehavior == pieceOrientationBehavior &&
         other.enablePremoveCastling == enablePremoveCastling &&
         other.autoQueenPromotion == autoQueenPromotion &&
         other.autoQueenPromotionOnPremove == autoQueenPromotionOnPremove &&
@@ -127,26 +210,31 @@ class ChessboardSettings {
 
   @override
   int get hashCode => Object.hash(
-        colorScheme,
-        pieceAssets,
-        borderRadius,
-        boxShadow,
-        enableCoordinates,
-        animationDuration,
-        showLastMove,
-        showValidMoves,
-        blindfoldMode,
-        dragFeedbackScale,
-        dragFeedbackOffset,
-        enablePremoveCastling,
-        autoQueenPromotion,
-        autoQueenPromotionOnPremove,
-        pieceShiftMethod,
-        drawShape,
-      );
+    colorScheme,
+    pieceAssets,
+    border,
+    borderRadius,
+    boxShadow,
+    enableCoordinates,
+    animationDuration,
+    showLastMove,
+    showValidMoves,
+    blindfoldMode,
+    dragFeedbackScale,
+    dragFeedbackOffset,
+    dragTargetKind,
+    pieceOrientationBehavior,
+    enablePremoveCastling,
+    autoQueenPromotion,
+    autoQueenPromotionOnPremove,
+    pieceShiftMethod,
+    drawShape,
+  );
 
   ChessboardSettings copyWith({
     ChessboardColorScheme? colorScheme,
+    double? brightness,
+    double? hue,
     PieceAssets? pieceAssets,
     BorderRadiusGeometry? borderRadius,
     List<BoxShadow>? boxShadow,
@@ -157,6 +245,8 @@ class ChessboardSettings {
     bool? blindfoldMode,
     double? dragFeedbackScale,
     Offset? dragFeedbackOffset,
+    DragTargetKind? dragTargetKind,
+    PieceOrientationBehavior? pieceOrientationBehavior,
     bool? enablePremoveCastling,
     bool? autoQueenPromotion,
     bool? autoQueenPromotionOnPremove,
@@ -165,7 +255,10 @@ class ChessboardSettings {
   }) {
     return ChessboardSettings(
       colorScheme: colorScheme ?? this.colorScheme,
+      brightness: brightness ?? this.brightness,
+      hue: hue ?? this.hue,
       pieceAssets: pieceAssets ?? this.pieceAssets,
+      border: border,
       borderRadius: borderRadius ?? this.borderRadius,
       boxShadow: boxShadow ?? this.boxShadow,
       enableCoordinates: enableCoordinates ?? this.enableCoordinates,
@@ -175,6 +268,9 @@ class ChessboardSettings {
       blindfoldMode: blindfoldMode ?? this.blindfoldMode,
       dragFeedbackScale: dragFeedbackScale ?? this.dragFeedbackScale,
       dragFeedbackOffset: dragFeedbackOffset ?? this.dragFeedbackOffset,
+      dragTargetKind: dragTargetKind ?? this.dragTargetKind,
+      pieceOrientationBehavior:
+          pieceOrientationBehavior ?? this.pieceOrientationBehavior,
       enablePremoveCastling:
           enablePremoveCastling ?? this.enablePremoveCastling,
       autoQueenPromotionOnPremove:
@@ -182,97 +278,6 @@ class ChessboardSettings {
       autoQueenPromotion: autoQueenPromotion ?? this.autoQueenPromotion,
       pieceShiftMethod: pieceShiftMethod ?? this.pieceShiftMethod,
       drawShape: drawShape ?? this.drawShape,
-    );
-  }
-}
-
-/// Board editor settings that control the theme, behavior and purpose of the board editor.
-///
-/// This is meant for fixed settings that don't change while editing the board.
-/// Sensible defaults are provided.
-@immutable
-class ChessboardEditorSettings {
-  /// Creates a new [ChessboardEditorSettings] with the provided values.
-  const ChessboardEditorSettings({
-    // theme
-    this.colorScheme = ChessboardColorScheme.brown,
-    this.pieceAssets = PieceSet.cburnettAssets,
-    // visual settings
-    this.borderRadius = BorderRadius.zero,
-    this.boxShadow = const <BoxShadow>[],
-    this.enableCoordinates = true,
-    this.dragFeedbackScale = 2.0,
-    this.dragFeedbackOffset = const Offset(0.0, -1.0),
-  });
-
-  /// Theme of the board.
-  final ChessboardColorScheme colorScheme;
-
-  /// Piece set.
-  final PieceAssets pieceAssets;
-
-  /// Border radius of the board.
-  final BorderRadiusGeometry borderRadius;
-
-  /// Box shadow of the board.
-  final List<BoxShadow> boxShadow;
-
-  /// Whether to show board coordinates.
-  final bool enableCoordinates;
-
-  // Scale up factor for the piece currently under drag.
-  final double dragFeedbackScale;
-
-  // Offset for the piece currently under drag.
-  final Offset dragFeedbackOffset;
-
-  @override
-  bool operator ==(Object other) {
-    if (identical(this, other)) {
-      return true;
-    }
-    if (other.runtimeType != runtimeType) {
-      return false;
-    }
-    return other is ChessboardEditorSettings &&
-        other.colorScheme == colorScheme &&
-        other.pieceAssets == pieceAssets &&
-        other.borderRadius == borderRadius &&
-        other.boxShadow == boxShadow &&
-        other.enableCoordinates == enableCoordinates &&
-        other.dragFeedbackScale == dragFeedbackScale &&
-        other.dragFeedbackOffset == dragFeedbackOffset;
-  }
-
-  @override
-  int get hashCode => Object.hash(
-        colorScheme,
-        pieceAssets,
-        borderRadius,
-        boxShadow,
-        enableCoordinates,
-        dragFeedbackScale,
-        dragFeedbackOffset,
-      );
-
-  /// Creates a copy of this [ChessboardEditorSettings] but with the given fields replaced with the new values.
-  ChessboardEditorSettings copyWith({
-    ChessboardColorScheme? colorScheme,
-    PieceAssets? pieceAssets,
-    BorderRadiusGeometry? borderRadius,
-    List<BoxShadow>? boxShadow,
-    bool? enableCoordinates,
-    double? dragFeedbackScale,
-    Offset? dragFeedbackOffset,
-  }) {
-    return ChessboardEditorSettings(
-      colorScheme: colorScheme ?? this.colorScheme,
-      pieceAssets: pieceAssets ?? this.pieceAssets,
-      borderRadius: borderRadius ?? this.borderRadius,
-      boxShadow: boxShadow ?? this.boxShadow,
-      enableCoordinates: enableCoordinates ?? this.enableCoordinates,
-      dragFeedbackScale: dragFeedbackScale ?? this.dragFeedbackScale,
-      dragFeedbackOffset: dragFeedbackOffset ?? this.dragFeedbackOffset,
     );
   }
 }
